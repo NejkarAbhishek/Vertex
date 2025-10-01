@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Vertex - Intelligent Multi-Channel Agent Orchestration
 Built with LlamaIndex, OpenAI GPT-4o, and Python
@@ -5,13 +7,15 @@ Built with LlamaIndex, OpenAI GPT-4o, and Python
 
 import os
 from dotenv import load_dotenv
+import ast
+from datetime import datetime
 
 load_dotenv()
 
 try:
-    from llama_index import OpenAI
-    from llama_index.tools import FunctionTool
-    from llama_index.agent import OpenAIAgent
+    from llama_index.core.tools import FunctionTool
+    from llama_index.llms.openai import OpenAI
+    from llama_index.core.agent import ReActAgent # <-- CORRECTED IMPORT
 
     print("All imports successful!")
 except ImportError as e:
@@ -102,10 +106,11 @@ def calculate(expression: str) -> str:
         Result of calculation
     """
     try:
-        result = eval(expression, {"__builtins__": {}}, {})
+        # Using ast.literal_eval for safe evaluation of simple Python literals
+        result = ast.literal_eval(expression)
         print(f"\nCALCULATOR TOOL: {expression} = {result}")
         return f"The answer is: {result}"
-    except Exception as e:
+    except (ValueError, SyntaxError, TypeError) as e:
         return f"Cannot calculate that: {str(e)}"
 
 
@@ -118,7 +123,6 @@ calc_tool = FunctionTool.from_defaults(
 
 def get_current_datetime() -> str:
     """Get the current date and time."""
-    from datetime import datetime
     now = datetime.now()
     formatted = now.strftime("%A, %B %d, %Y at %I:%M %p")
     print(f"\nDATE/TIME TOOL: {formatted}")
@@ -141,7 +145,7 @@ def create_agent(llm):
     for tool in tools:
         print(f"   * {tool.metadata.name}")
 
-    agent = OpenAIAgent.from_tools(
+    agent = ReActAgent.from_tools(
         tools=tools,
         llm=llm,
         verbose=True
